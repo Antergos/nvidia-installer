@@ -338,8 +338,9 @@ def install(driver, bumblebee=False):
             cmd.extend(conflicts)
             subprocess.check_output(cmd, stderr=subprocess.STDOUT)
         except subprocess.CalledProcessError as err:
-            logging.error("Cannot remove conflicting packages: %s", err.output.decode())
-            return False
+            # If packages are not installed, pacman will fail
+            logging.warning("Cannot remove conflicting packages: %s", err.output.decode())
+            #return False
 
     # Install needed driver packages
     try:
