@@ -359,7 +359,7 @@ def get_installed_packages():
     installed_packages = []
     try:
         cmd = ["pacman", "-Q"]
-        res = subprocess.check_output(cmd, stderr=subprocess.STDOUT)
+        res = subprocess.check_output(cmd, stderr=subprocess.STDOUT).decode().split('\n')
         for line in res:
             pkg = line.split()[0]
             installed_packages.append(pkg)
