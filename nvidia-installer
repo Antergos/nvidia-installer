@@ -332,9 +332,9 @@ def install(driver, bumblebee=False):
             packages.extend(BUMBLEBEE_X86_64)
 
     if not bumblebee:
-        # Remove conflicting packages
+        logging.info("Removing conflicting packages...")
         installed_packages = get_installed_packages()
-	# mesa-libgl cannot be removed without --nodeps (twice) because of dependencies on libgl
+        # mesa-libgl cannot be removed without --nodeps (twice) because of dependencies on libgl
         # We can do it as we will install nvidia-libgl in the next step
         cmd = ["pacman", "-Rs", "--noconfirm", "--noprogressbar", "--nodeps", "--nodeps"]
         for conflict in conflicts:
@@ -342,10 +342,10 @@ def install(driver, bumblebee=False):
                 try:
                     subprocess.check_output(cmd + [conflict], stderr=subprocess.STDOUT)
                 except subprocess.CalledProcessError as err:
-                    # If packages are not installed, pacman will fail
-                    logging.warning("Cannot remove conflicting package %s: %s", conflict, err.output.decode())
+                    logging.error("Cannot remove conflicting package %s: %s", conflict, err.output.decode())
+                    return False
 
-    # Install needed driver packages
+    logging.info("Downloading and installing driver packages, please wait...")
     try:
         cmd = ["pacman", "-Sqy", "--noconfirm", "--noprogressbar"]
         cmd.extend(packages)
@@ -388,10 +388,10 @@ def parse_options():
         help="Force nvidia driver installation even if your card is not detected",
         action="store_true")
 
-    parser.add_argument(
-        "-n", "--nouveau",
-        help="Restores nouveau (open) nvidia driver",
-        action="store_true")
+    #parser.add_argument(
+    #    "-n", "--nouveau",
+    #    help="Restores nouveau (open) nvidia driver",
+    #    action="store_true")
 
     return parser.parse_args()
 
