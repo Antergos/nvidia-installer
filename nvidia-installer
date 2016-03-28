@@ -333,14 +333,15 @@ def install(driver, bumblebee=False):
 
     if not bumblebee:
         # Remove conflicting packages
-        try:
-            cmd = ["pacman", "-Rs", "--noconfirm", "--noprogressbar"]
-            cmd.extend(conflicts)
-            subprocess.check_output(cmd, stderr=subprocess.STDOUT)
-        except subprocess.CalledProcessError as err:
-            # If packages are not installed, pacman will fail
-            logging.warning("Cannot remove conflicting packages: %s", err.output.decode())
-            #return False
+        installed_packages = get_installed_packages()
+        cmd = ["pacman", "-Rs", "--noconfirm", "--noprogressbar"]
+        for conflict in conflicts:
+            if conflict in installed_packages:
+                try:
+                    subprocess.check_output(cmd + [conflict], stderr=subprocess.STDOUT)
+                except subprocess.CalledProcessError as err:
+                    # If packages are not installed, pacman will fail
+                    logging.warning("Cannot remove conflicting package %s: %s", conflict, err.output.decode())
 
     # Install needed driver packages
     try:
@@ -352,6 +353,19 @@ def install(driver, bumblebee=False):
         return False
 
     return True
+
+
+def get_installed_packages():
+    installed_packages = []
+    try:
+        cmd = ["pacman", "-Q"]
+        res = subprocess.check_output(cmd, stderr=subprocess.STDOUT)
+        for line in res:
+            pkg = line.split()[0]
+            installed_packages.append(pkg)
+    except subprocess.CalledProcessError as err:
+        logging.warning("Cannot check installed packages (pacman -Q): %s", err.output.decode())
+    return installed_packages
 
 
 def parse_options():
