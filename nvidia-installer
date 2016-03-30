@@ -328,7 +328,7 @@ def install(driver):
         packages.extend(PACKAGES_X86_64[driver])
         conflicts.extend(CONFLICTS_X86_64[driver])
 
-    logging.info("Removing conflicting packages...")
+    print("Removing conflicting packages...")
     installed_packages = get_installed_packages()
 
     cmd = ["pacman", "-Rs", "--noconfirm", "--noprogressbar", "--nodeps", "--nodeps"]
@@ -340,7 +340,7 @@ def install(driver):
                 logging.error("Cannot remove conflicting package %s: %s", conflict, err.output.decode())
                 return False
 
-    logging.info("Downloading and installing driver packages, please wait...")
+    print("Downloading and installing driver packages, please wait...")
     try:
         cmd = ["pacman", "-Sqy", "--noconfirm", "--noprogressbar"]
         cmd.extend(packages)
@@ -426,12 +426,12 @@ def main():
         driver = "nvidia"
 
     if driver:
-        logging.info("Installing {} driver...".format(driver))
+        print("Installing {} driver...".format(driver))
         if install(driver):
             post_install(cmd_line.bumblebee)
             # The nvidia package contains a file which blacklists the nouveau
             # module, so rebooting is necessary.
-            logging.info("You need to reboot now.")
+            print("You need to reboot now.")
     else:
         logging.error("Couldn't find a driver suitable for your graphics card.")
 
