@@ -32,7 +32,7 @@ import os
 import logging
 import subprocess
 
-VERSION = "0.0.2"
+VERSION = "0.0.3"
 
 """
 For GeForce 400 series cards and newer [NVCx and newer], install the nvidia or
