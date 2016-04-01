@@ -412,9 +412,9 @@ def main():
         return
 
     if cmd_line.bumblebee:
-        if cmd_line.nouveau:
-            logging.error("It is not possible to install bumblebee with the open nouveau driver using this installer")
-            return
+        #if cmd_line.nouveau:
+        #    logging.error("It is not possible to install bumblebee with the open nouveau driver using this installer")
+        #    return
         if not show_bumblebee_warning():
             return
         driver = "bumblebee"
