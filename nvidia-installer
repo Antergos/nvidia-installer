@@ -3,7 +3,7 @@
 #
 #  nvidia-installer
 #
-#  Copyright © 2013-2016 Antergos
+#  Copyright © 2013-2017 Antergos
 #
 #  This file is part of Antergos.
 #
@@ -32,7 +32,7 @@ import os
 import logging
 import subprocess
 
-VERSION = "0.0.3"
+VERSION = "0.0.4"
 
 """
 For GeForce 400 series cards and newer [NVCx and newer], install the nvidia or
@@ -241,7 +241,7 @@ PACKAGES = {
     "nvidia": ["nvidia", "nvidia-utils", "nvidia-libgl", "libvdpau"],
     "nvidia340xx": ["nvidia-340xx", "nvidia-340xx-utils", "nvidia-340xx-libgl", "libvdpau"],
     "nvidia304xx": ["nvidia-304xx", "nvidia-304xx-utils", "nvidia-304xx-libgl", "libvdpau"],
-    "bumblebee": ["mesa", "xf86-video-intel", "nvidia", "virtualgl", "nvidia-settings", "bbswitch"]}
+    "bumblebee": ["bumblebee", "mesa", "xf86-video-intel", "nvidia", "virtualgl", "nvidia-settings", "bbswitch"]}
 
 PACKAGES_X86_64 = {
     "nvidia": ["lib32-nvidia-libgl", "lib32-libvdpau"],
@@ -250,10 +250,10 @@ PACKAGES_X86_64 = {
     "bumblebee": ["lib32-nvidia-utils", "lib32-virtualgl", "lib32-mesa-libgl"]}
 
 CONFLICTS = {
-    "nvidia": ["mesa-libgl"],
-    "nvidia340xx": ["mesa-libgl"],
-    "nvidia304xx": ["mesa-libgl"],
-    "bumblebee": ["nvidia-libgl", "nvidia-340xx-libgl", "nvidia-304xx-libgl"]}
+    "nvidia": ["xf86-video-nouveau", "mesa-libgl"],
+    "nvidia340xx": ["xf86-video-nouveau", "mesa-libgl"],
+    "nvidia304xx": ["xf86-video-nouveau", "mesa-libgl"],
+    "bumblebee": ["xf86-video-nouveau", "nvidia-libgl", "nvidia-340xx-libgl", "nvidia-304xx-libgl"]}
 
 CONFLICTS_X86_64 = {
     "nvidia": ["lib32-mesa-libgl"],
@@ -286,39 +286,7 @@ def check_device():
     return None
 
 
-def post_install(bumblebee=False):
-    """ Run post installation actions here """
-    if bumblebee:
-        # Add user to bumblebee group
-        user = getpass.getuser()
-        try:
-            cmd = ["gpasswd", "-a", user, "bumblebee"]
-            subprocess.check_output(cmd, stderr=subprocess.STDOUT)
-        except subprocess.CalledProcessError as err:
-            logging.warning("Cannot add user %s to the bumblebee group: %s", user, err.output.decode())
-        # Enable bumblebeed service
-        try:
-            cmd = ["systemctl", "enable", "bumblebeed.service"]
-            subprocess.check_output(cmd, stderr=subprocess.STDOUT)
-        except subprocess.CalledProcessError as err:
-            logging.warning("Cannot enable bumblebee service: %s", err.output.decode())
-
-        msg = ("Setup is done. Now, start up your computer, and once again, enter your BIOS utility configuration.\n"
-            "Find the Display configuration and change it from 'integrated graphics' to 'Optimus'.\n"
-            "Leave the 'Detected by OS' in the 'Disabled' position.\n")
-        print(msg)
-    else:
-        path = "/etc/X11/xorg.conf.d/20-nvidia.conf"
-        with open(path, 'w') as nvidia:
-            nvidia.write('Section "Device"\n')
-            nvidia.write('    Identifier "Nvidia Card"\n')
-            nvidia.write('    Driver "nvidia"\n')
-            nvidia.write('    VendorName "NVIDIA Corporation"\n')
-            nvidia.write('    Option "NoLogo" "true"\n')
-            nvidia.write('EndSection\n')
-
-
-def install(driver):
+def install(driver, test=False):
     """ Performs packages installation """
 
     packages = PACKAGES[driver]
@@ -335,7 +303,10 @@ def install(driver):
     for conflict in conflicts:
         if conflict in installed_packages:
             try:
-                subprocess.check_output(cmd + [conflict], stderr=subprocess.STDOUT)
+                if test:
+                    print(" ".join(cmd + [conflict]))
+                else:
+                    subprocess.check_output(cmd + [conflict], stderr=subprocess.STDOUT)
             except subprocess.CalledProcessError as err:
                 logging.error("Cannot remove conflicting package %s: %s", conflict, err.output.decode())
                 return False
@@ -344,7 +315,10 @@ def install(driver):
     try:
         cmd = ["pacman", "-Sqy", "--noconfirm", "--noprogressbar"]
         cmd.extend(packages)
-        subprocess.check_output(cmd, stderr=subprocess.STDOUT)
+        if test:
+            print(" ".join(cmd))
+        else:
+            subprocess.check_output(cmd, stderr=subprocess.STDOUT)
     except subprocess.CalledProcessError as err:
         logging.error("Cannot install required packages: %s", err.output.decode())
         return False
@@ -367,20 +341,63 @@ def get_installed_packages():
     return installed_packages
 
 
-def parse_options():
-    """ argparse http://docs.python.org/3/howto/argparse.html """
+def post_install(driver, test=False):
+    """ Run post installation actions here """
+    if driver == "bumblebee":
+        try:
+            user = os.environ['SUDO_USER']
+        except KeyError:
+            user = getpass.getuser()
 
+        print("Adding user {0} to bumblebee group...".format(user))
+        try:
+            cmd = ["gpasswd", "-a", user, "bumblebee"]
+            if test:
+                print(cmd)
+            else:
+                subprocess.check_output(cmd, stderr=subprocess.STDOUT)
+        except subprocess.CalledProcessError as err:
+            logging.warning("Cannot add user %s to the bumblebee group: %s", user, err.output.decode())
+
+        print("Enabling bumblebeed service...")
+        try:
+            cmd = ["systemctl", "enable", "bumblebeed.service"]
+            if test:
+                print(cmd)
+            else:
+                subprocess.check_output(cmd, stderr=subprocess.STDOUT)
+        except subprocess.CalledProcessError as err:
+            logging.warning("Cannot enable bumblebee service: %s", err.output.decode())
+    else:
+        print("Creating /etc/X11/xorg.conf.d/20-nvidia.conf file...")
+        if not test:
+            path = "/etc/X11/xorg.conf.d/20-nvidia.conf"
+            with open(path, 'w') as nvidia:
+                nvidia.write('Section "Device"\n')
+                nvidia.write('    Identifier "Nvidia Card"\n')
+                nvidia.write('    Driver "nvidia"\n')
+                nvidia.write('    VendorName "NVIDIA Corporation"\n')
+                nvidia.write('    Option "NoLogo" "true"\n')
+                nvidia.write('EndSection\n')
+
+
+def parse_options():
     desc = "Antergos Nvidia Installer v{0}".format(VERSION)
     parser = argparse.ArgumentParser(description=desc)
 
     parser.add_argument(
         "-b", "--bumblebee",
         help="For Nvidia Optimus cards (Bumblebee + proprietary Nvidia drivers)",
-        action="store_true")
+        action='store_true')
 
     parser.add_argument(
         "-f", "--force",
         help="Force nvidia driver installation even if your card is not detected",
+        action="store_true")
+
+    parser.add_argument(
+        "-t", "--test",
+        help="Only show what the installer will do, nothing in your system will be modified",
         action="store_true")
 
     #parser.add_argument(
@@ -390,33 +407,16 @@ def parse_options():
 
     return parser.parse_args()
 
-def show_bumblebee_warning():
-    msg = ("BEFORE running this installer, make sure that you do NOT have Optimus and Discrete enabled.\n"
-        "Go to your BIOS, find your display settings, and select 'Intel Integrated', or something similar.\n"
-        "Make sure that the setting below it, 'Detection by OS' is DISABLED.\n")
-
-    print(msg)
-    res = input("Have you already selected 'Intel Integrated' in your BIOS (y/n)?")
-    if res == 'y' or res == 'Y':
-        return True
-    else:
-        print("Go to your BIOS and make the changes. Run this program again when you are done.")
-        return False
 
 def main():
     # Command line options
     cmd_line = parse_options()
 
-    if os.getuid() != 0:
+    if not cmd_line.test and os.getuid() != 0:
         logging.error("This installer must be run with administrative privileges (use sudo)")
         return
 
     if cmd_line.bumblebee:
-        #if cmd_line.nouveau:
-        #    logging.error("It is not possible to install bumblebee with the open nouveau driver using this installer")
-        #    return
-        if not show_bumblebee_warning():
-            return
         driver = "bumblebee"
     else:
         driver = check_device()
@@ -427,8 +427,8 @@ def main():
 
     if driver:
         print("Installing {} driver...".format(driver))
-        if install(driver):
-            post_install(cmd_line.bumblebee)
+        if install(driver, cmd_line.test):
+            post_install(driver, cmd_line.test)
             # The nvidia package contains a file which blacklists the nouveau
             # module, so rebooting is necessary.
             print("You need to reboot now.")
