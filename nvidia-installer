@@ -32,7 +32,14 @@ import os
 import logging
 import subprocess
 
-VERSION = "0.0.4"
+VERSION = "0.0.5"
+TEST = True
+
+YELLOW = '\033[93m'
+GREEN = '\033[92m'
+RED = '\033[91m'
+ENDC = '\033[0m'
+BOLD ='\033[1m'
 
 """
 For GeForce 400 series cards and newer [NVCx and newer], install the nvidia or
@@ -269,7 +276,7 @@ def check_device():
         lines = subprocess.check_output(cmd, stderr=subprocess.STDOUT)
         lines = lines.decode().split("\n")
     except subprocess.CalledProcessError as err:
-        logging.warning("Cannot detect hardware components : %s", err.output.decode())
+        logging.warning(YELLOW + "Cannot detect hardware components : %s" + ENDC, err.output.decode())
         return None
 
     for line in lines:
@@ -286,7 +293,7 @@ def check_device():
     return None
 
 
-def install(driver, test=False):
+def install(driver):
     """ Performs packages installation """
 
     packages = PACKAGES[driver]
@@ -302,26 +309,26 @@ def install(driver, test=False):
     cmd = ["pacman", "-Rs", "--noconfirm", "--noprogressbar", "--nodeps", "--nodeps"]
     for conflict in conflicts:
         if conflict in installed_packages:
-            try:
-                if test:
-                    print(" ".join(cmd + [conflict]))
-                else:
+            if TEST:
+                print(GREEN + " ".join(cmd + [conflict]) + ENDC)
+            else:
+                try:
                     subprocess.check_output(cmd + [conflict], stderr=subprocess.STDOUT)
-            except subprocess.CalledProcessError as err:
-                logging.error("Cannot remove conflicting package %s: %s", conflict, err.output.decode())
-                return False
+                except subprocess.CalledProcessError as err:
+                    logging.error("Cannot remove conflicting package %s: %s", conflict, err.output.decode())
+                    return False
 
     print("Downloading and installing driver packages, please wait...")
-    try:
-        cmd = ["pacman", "-Sqy", "--noconfirm", "--noprogressbar"]
-        cmd.extend(packages)
-        if test:
-            print(" ".join(cmd))
-        else:
+    cmd = ["pacman", "-Sqy", "--noconfirm", "--noprogressbar"]
+    cmd.extend(packages)
+    if TEST:
+        print(GREEN + " ".join(cmd) + ENDC)
+    else:
+        try:
             subprocess.check_output(cmd, stderr=subprocess.STDOUT)
-    except subprocess.CalledProcessError as err:
-        logging.error("Cannot install required packages: %s", err.output.decode())
-        return False
+        except subprocess.CalledProcessError as err:
+            logging.error("Cannot install required packages: %s", err.output.decode())
+            return False
 
     return True
 
@@ -337,40 +344,70 @@ def get_installed_packages():
             if len(line) > 0:
                 installed_packages.append(line[0])
     except subprocess.CalledProcessError as err:
-        logging.warning("Cannot check installed packages (pacman -Q): %s", err.output.decode())
+        logging.warning(YELLOW + "Cannot check installed packages (pacman -Q): %s" + ENDC, err.output.decode())
     return installed_packages
 
 
-def post_install(driver, test=False):
+def add_user_to_group(user, group):
+    print("Adding user {0} to {1} group...".format(user, group))
+    cmd = ["gpasswd", "-a", user, group]
+    if TEST:
+        print(GREEN + " ".join(cmd) + ENDC)
+    else:
+        try:
+            subprocess.check_output(cmd, stderr=subprocess.STDOUT)
+        except subprocess.CalledProcessError as err:
+            logging.warning(YELLOW + "Cannot add user %s to the %s group: %s" + ENDC, user, group, err.output.decode())
+
+
+def get_user():
+    user = None
+    try:
+        user = os.environ['SUDO_USER']
+    except KeyError:
+        user = getpass.getuser()
+    return user
+
+
+def enable_service(service):
+    print("Enabling {} service...".format(service))
+    cmd = ["systemctl", "enable", service]
+    if TEST:
+        print(GREEN + " ".join(cmd) + ENDC)
+    else:
+        try:
+            subprocess.check_output(cmd, stderr=subprocess.STDOUT)
+        except subprocess.CalledProcessError as err:
+            logging.warning(YELLOW + "Cannot enable %s service: %s" + ENDC, service, err.output.decode())
+
+
+def post_install(driver):
     """ Run post installation actions here """
     if driver == "bumblebee":
-        try:
-            user = os.environ['SUDO_USER']
-        except KeyError:
-            user = getpass.getuser()
+        user = get_user()
 
-        print("Adding user {0} to bumblebee group...".format(user))
-        try:
-            cmd = ["gpasswd", "-a", user, "bumblebee"]
-            if test:
-                print(cmd)
-            else:
-                subprocess.check_output(cmd, stderr=subprocess.STDOUT)
-        except subprocess.CalledProcessError as err:
-            logging.warning("Cannot add user %s to the bumblebee group: %s", user, err.output.decode())
+        add_user_to_group(user, "bumblebee")
+        add_user_to_group(user, "video")
 
-        print("Enabling bumblebeed service...")
-        try:
-            cmd = ["systemctl", "enable", "bumblebeed.service"]
-            if test:
-                print(cmd)
+        enable_service("bumblebeed.service")
+
+        # Fix nvidia-settings.desktop
+        desktop_path = "/usr/share/applications/nvidia-settings.desktop"
+        if os.path.exists(desktop_path):
+            print("Patching %s...", desktop_path)
+            cmd = ["sed", "-i", "'s/Exec=nvidia-settings/Exec=optirun -b none nvidia-settings -c :8/'", "/usr/share/applications/nvidia-settings.desktop"]
+            if TEST:
+                print(GREEN + " ".join(cmd) + ENDC)
             else:
-                subprocess.check_output(cmd, stderr=subprocess.STDOUT)
-        except subprocess.CalledProcessError as err:
-            logging.warning("Cannot enable bumblebee service: %s", err.output.decode())
+                try:
+                    subprocess.check_output(cmd, stderr=subprocess.STDOUT)
+                except subprocess.CalledProcessError as err:
+                    logging.warning(YELLOW + "Cannot patch %s file : %s" + ENDC, desktop_path, err.output.decode())
+        else:
+            print("{0}Could not find {1} file. Is nvidia-settings installed?{2}".format(YELLOW, desktop_path, ENDC))
     else:
         print("Creating /etc/X11/xorg.conf.d/20-nvidia.conf file...")
-        if not test:
+        if not TEST:
             path = "/etc/X11/xorg.conf.d/20-nvidia.conf"
             with open(path, 'w') as nvidia:
                 nvidia.write('Section "Device"\n')
@@ -408,13 +445,28 @@ def parse_options():
     return parser.parse_args()
 
 
+def show_msg(type, msg):
+
+    try:
+        print(colors[type] + msg + colors["end"])
+    except KeyError:
+        print(msg)
+
+
+
 def main():
     # Command line options
     cmd_line = parse_options()
 
-    if not cmd_line.test and os.getuid() != 0:
-        logging.error("This installer must be run with administrative privileges (use sudo)")
+    global TEST
+    TEST = cmd_line.test
+
+    if not TEST and os.getuid() != 0:
+        logging.error(RED + "This installer must be run with administrative privileges (use sudo)")
         return
+
+    if TEST:
+        print(YELLOW + "Running the installer in testing mode..." + ENDC)
 
     if cmd_line.bumblebee:
         driver = "bumblebee"
@@ -422,16 +474,19 @@ def main():
         driver = check_device()
 
     if not driver and cmd_line.force:
-        logging.warning("Nvidia card is not in the database. Forcing nvidia driver installation anyways...")
+        logging.warning(YELLOW + "Nvidia card is not in the database. Forcing nvidia driver installation anyways..." + ENDC)
         driver = "nvidia"
 
     if driver:
         print("Installing {} driver...".format(driver))
-        if install(driver, cmd_line.test):
-            post_install(driver, cmd_line.test)
+        if install(driver):
+            post_install(driver)
             # The nvidia package contains a file which blacklists the nouveau
             # module, so rebooting is necessary.
-            print("You need to reboot now.")
+            if TEST:
+                print(BOLD + "Installation finished. Nothing has been modified as testing mode was ON." + ENDC)
+            else:
+                print(BOLD + "Installation finished. You need to reboot now!" + ENDC)
     else:
         logging.error("Couldn't find a driver suitable for your graphics card.")
 
