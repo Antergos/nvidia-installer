@@ -347,6 +347,8 @@ def get_installed_packages():
                 installed_packages.append(line[0])
     except subprocess.CalledProcessError as err:
         log_warning("Cannot check installed packages (pacman -Q): {}".format(err.output.decode()))
+    except OSError as err:
+        log_warning("Cannot check installed packages (pacman -Q): {}".format(err))
     return installed_packages
 
 
@@ -467,7 +469,7 @@ def setup_logging(cmd_line):
 
     # Log format
     formatter = logging.Formatter(
-        fmt="%(asctime)s [%(levelname)s] %(filename)s(%(lineno)d) %(funcName)s(): %(message)s",
+        fmt="%(asctime)s [%(levelname)s] (%(lineno)d): %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S")
 
     # File logger
@@ -523,7 +525,7 @@ def main():
         driver = check_device()
 
     if not driver and cmd_line.force:
-        log_warning("Nvidia card is not in the database. Forcing nvidia driver installation anyways...")
+        log_warning("Your graphics card is not in our database. Forcing nvidia driver installation anyways...")
         driver = "nvidia"
 
     if driver:
