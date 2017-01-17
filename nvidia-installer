@@ -35,6 +35,8 @@ import subprocess
 VERSION = "0.0.5"
 TEST = True
 
+LOG_FILE = "/tmp/nvidia-installer.log"
+
 YELLOW = '\033[93m'
 GREEN = '\033[92m'
 RED = '\033[91m'
@@ -276,7 +278,7 @@ def check_device():
         lines = subprocess.check_output(cmd, stderr=subprocess.STDOUT)
         lines = lines.decode().split("\n")
     except subprocess.CalledProcessError as err:
-        logging.warning(YELLOW + "Cannot detect hardware components : %s" + ENDC, err.output.decode())
+        log_warning("Cannot detect hardware components : {}".format(err.output.decode())
         return None
 
     for line in lines:
@@ -303,7 +305,7 @@ def install(driver):
         packages.extend(PACKAGES_X86_64[driver])
         conflicts.extend(CONFLICTS_X86_64[driver])
 
-    print("Removing conflicting packages...")
+    log_info("Removing conflicting packages...")
     installed_packages = get_installed_packages()
 
     cmd = ["pacman", "-Rs", "--noconfirm", "--noprogressbar", "--nodeps", "--nodeps"]
@@ -315,10 +317,10 @@ def install(driver):
                 try:
                     subprocess.check_output(cmd + [conflict], stderr=subprocess.STDOUT)
                 except subprocess.CalledProcessError as err:
-                    logging.error("Cannot remove conflicting package %s: %s", conflict, err.output.decode())
+                    log_error("Cannot remove conflicting package {0}: {1}".format(conflict, err.output.decode()))
                     return False
 
-    print("Downloading and installing driver packages, please wait...")
+    log_info("Downloading and installing driver packages, please wait...")
     cmd = ["pacman", "-Sqy", "--noconfirm", "--noprogressbar"]
     cmd.extend(packages)
     if TEST:
@@ -327,7 +329,7 @@ def install(driver):
         try:
             subprocess.check_output(cmd, stderr=subprocess.STDOUT)
         except subprocess.CalledProcessError as err:
-            logging.error("Cannot install required packages: %s", err.output.decode())
+            log_error("Cannot install required packages: {}".format(err.output.decode()))
             return False
 
     return True
@@ -344,12 +346,12 @@ def get_installed_packages():
             if len(line) > 0:
                 installed_packages.append(line[0])
     except subprocess.CalledProcessError as err:
-        logging.warning(YELLOW + "Cannot check installed packages (pacman -Q): %s" + ENDC, err.output.decode())
+        log_warning("Cannot check installed packages (pacman -Q): {}".format(err.output.decode()))
     return installed_packages
 
 
 def add_user_to_group(user, group):
-    print("Adding user {0} to {1} group...".format(user, group))
+    log_info("Adding user {0} to {1} group...".format(user, group))
     cmd = ["gpasswd", "-a", user, group]
     if TEST:
         print(GREEN + " ".join(cmd) + ENDC)
@@ -357,7 +359,7 @@ def add_user_to_group(user, group):
         try:
             subprocess.check_output(cmd, stderr=subprocess.STDOUT)
         except subprocess.CalledProcessError as err:
-            logging.warning(YELLOW + "Cannot add user %s to the %s group: %s" + ENDC, user, group, err.output.decode())
+            log_warning("Cannot add user {0} to the {1} group: {2}".format(user, group, err.output.decode()))
 
 
 def get_user():
@@ -370,7 +372,7 @@ def get_user():
 
 
 def enable_service(service):
-    print("Enabling {} service...".format(service))
+    log_info("Enabling {} service...".format(service))
     cmd = ["systemctl", "enable", service]
     if TEST:
         print(GREEN + " ".join(cmd) + ENDC)
@@ -378,7 +380,7 @@ def enable_service(service):
         try:
             subprocess.check_output(cmd, stderr=subprocess.STDOUT)
         except subprocess.CalledProcessError as err:
-            logging.warning(YELLOW + "Cannot enable %s service: %s" + ENDC, service, err.output.decode())
+            log_warning("Cannot enable {0} service: {1}".format(service, err.output.decode()))
 
 
 def post_install(driver):
@@ -394,15 +396,16 @@ def post_install(driver):
         # Fix nvidia-settings.desktop
         desktop_path = "/usr/share/applications/nvidia-settings.desktop"
         if os.path.exists(desktop_path):
-            print("Patching %s...", desktop_path)
+            log_info("Patching {}...".format(desktop_path))
             cmd = ["sed", "-i", "'s/Exec=nvidia-settings/Exec=optirun -b none nvidia-settings -c :8/'", "/usr/share/applications/nvidia-settings.desktop"]
             if TEST:
-                print(GREEN + " ".join(cmd) + ENDC)
+                log_info(" ".join(cmd))
             else:
                 try:
                     subprocess.check_output(cmd, stderr=subprocess.STDOUT)
                 except subprocess.CalledProcessError as err:
-                    logging.warning(YELLOW + "Cannot patch %s file : %s" + ENDC, desktop_path, err.output.decode())
+                    # HERE!!!!!!!!
+                    log_warning("Cannot patch {} file : %s" + ENDC, desktop_path, err.output.decode())
         else:
             print("{0}Could not find {1} file. Is nvidia-settings installed?{2}".format(YELLOW, desktop_path, ENDC))
     else:
@@ -453,20 +456,70 @@ def show_msg(type, msg):
         print(msg)
 
 
+def setup_logging():
+    """ Configure our logger """
+    logger = logging.getLogger()
+
+    logger.handlers = []
+
+    if cmd_line.debug:
+        log_level = logging.DEBUG
+    else:
+        log_level = logging.INFO
+
+    logger.setLevel(log_level)
+
+    context_filter = ContextFilter()
+    logger.addFilter(context_filter.filter)
+
+    # Log format
+    formatter = logging.Formatter(
+        fmt="%(asctime)s [%(levelname)s] %(filename)s(%(lineno)d) %(funcName)s(): %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S")
+
+    # File logger
+    try:
+        file_handler = logging.FileHandler(LOG_FILE, mode='w')
+        file_handler.setLevel(log_level)
+        file_handler.setFormatter(formatter)
+        logger.addHandler(file_handler)
+    except PermissionError as permission_error:
+        print("Can't open {0} : {1}".format(LOG_FILE, permission_error))
+
+    # Stdout logger
+    if cmd_line.verbose:
+        stream_handler = logging.StreamHandler()
+        stream_handler.setLevel(log_level)
+        stream_handler.setFormatter(formatter)
+        logger.addHandler(stream_handler)
+
+def log_error(msg):
+    logging.error(RED + msg + ENDC)
+
+def log_warning(msg):
+    logging.warning(YELLOW + msg + ENDC)
+
+def log_info(msg):
+    logging.info(GREEN + msg + ENDC)
+
+def log_debug(msg):
+    logging.debug(msg)
 
 def main():
     # Command line options
     cmd_line = parse_options()
 
+    setup_logging()
+
     global TEST
     TEST = cmd_line.test
 
     if not TEST and os.getuid() != 0:
-        logging.error(RED + "This installer must be run with administrative privileges (use sudo)")
+        log_error("This installer must be run with administrative privileges (use sudo)")
         return
 
     if TEST:
-        print(YELLOW + "Running the installer in testing mode..." + ENDC)
+        logging.info(YELLOW + "Running the installer in testing mode..." + ENDC)
 
     if cmd_line.bumblebee:
         driver = "bumblebee"
@@ -478,17 +531,17 @@ def main():
         driver = "nvidia"
 
     if driver:
-        print("Installing {} driver...".format(driver))
+        logging.info("Installing %s driver...", driver)
         if install(driver):
             post_install(driver)
             # The nvidia package contains a file which blacklists the nouveau
             # module, so rebooting is necessary.
             if TEST:
-                print(BOLD + "Installation finished. Nothing has been modified as testing mode was ON." + ENDC)
+                logging.info(BOLD + "Installation finished. Nothing has been modified as testing mode was ON." + ENDC)
             else:
-                print(BOLD + "Installation finished. You need to reboot now!" + ENDC)
+                logging.info(BOLD + "Installation finished. You need to reboot now!" + ENDC)
     else:
-        logging.error("Couldn't find a driver suitable for your graphics card.")
+        logging.error(RED + "Couldn't find a driver suitable for your graphics card." + ENDC)
 
 
 if __name__ == "__main__":
