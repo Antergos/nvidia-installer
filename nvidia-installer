@@ -278,7 +278,7 @@ def check_device():
         lines = subprocess.check_output(cmd, stderr=subprocess.STDOUT)
         lines = lines.decode().split("\n")
     except subprocess.CalledProcessError as err:
-        log_warning("Cannot detect hardware components : {}".format(err.output.decode())
+        log_warning("Cannot detect hardware components : {}".format(err.output.decode()))
         return None
 
     for line in lines:
@@ -312,7 +312,7 @@ def install(driver):
     for conflict in conflicts:
         if conflict in installed_packages:
             if TEST:
-                print(GREEN + " ".join(cmd + [conflict]) + ENDC)
+                log_info(" ".join(cmd + [conflict]))
             else:
                 try:
                     subprocess.check_output(cmd + [conflict], stderr=subprocess.STDOUT)
@@ -324,7 +324,7 @@ def install(driver):
     cmd = ["pacman", "-Sqy", "--noconfirm", "--noprogressbar"]
     cmd.extend(packages)
     if TEST:
-        print(GREEN + " ".join(cmd) + ENDC)
+        log_info(" ".join(cmd))
     else:
         try:
             subprocess.check_output(cmd, stderr=subprocess.STDOUT)
@@ -354,7 +354,7 @@ def add_user_to_group(user, group):
     log_info("Adding user {0} to {1} group...".format(user, group))
     cmd = ["gpasswd", "-a", user, group]
     if TEST:
-        print(GREEN + " ".join(cmd) + ENDC)
+        log_info(" ".join(cmd))
     else:
         try:
             subprocess.check_output(cmd, stderr=subprocess.STDOUT)
@@ -375,7 +375,7 @@ def enable_service(service):
     log_info("Enabling {} service...".format(service))
     cmd = ["systemctl", "enable", service]
     if TEST:
-        print(GREEN + " ".join(cmd) + ENDC)
+        log_info(" ".join(cmd))
     else:
         try:
             subprocess.check_output(cmd, stderr=subprocess.STDOUT)
@@ -404,14 +404,13 @@ def post_install(driver):
                 try:
                     subprocess.check_output(cmd, stderr=subprocess.STDOUT)
                 except subprocess.CalledProcessError as err:
-                    # HERE!!!!!!!!
-                    log_warning("Cannot patch {} file : %s" + ENDC, desktop_path, err.output.decode())
+                    log_warning("Cannot patch {0} file : {1}".format(desktop_path, err.output.decode()))
         else:
-            print("{0}Could not find {1} file. Is nvidia-settings installed?{2}".format(YELLOW, desktop_path, ENDC))
+            log_info("Could not find {0} file. Is nvidia-settings installed?".format(desktop_path))
     else:
-        print("Creating /etc/X11/xorg.conf.d/20-nvidia.conf file...")
+        path = "/etc/X11/xorg.conf.d/20-nvidia.conf"
+        log_info("Creating {} file...".format(path))
         if not TEST:
-            path = "/etc/X11/xorg.conf.d/20-nvidia.conf"
             with open(path, 'w') as nvidia:
                 nvidia.write('Section "Device"\n')
                 nvidia.write('    Identifier "Nvidia Card"\n')
@@ -432,12 +431,17 @@ def parse_options():
 
     parser.add_argument(
         "-f", "--force",
-        help="Force nvidia driver installation even if your card is not detected",
+        help="Force driver installation even if a nvidia card is not detected",
         action="store_true")
 
     parser.add_argument(
         "-t", "--test",
-        help="Only show what the installer will do, nothing in your system will be modified",
+        help="Test mode. Nothing in your system will be modified",
+        action="store_true")
+
+    parser.add_argument(
+        "-q", "--quiet",
+        help="Supress log messages",
         action="store_true")
 
     #parser.add_argument(
@@ -448,29 +452,18 @@ def parse_options():
     return parser.parse_args()
 
 
-def show_msg(type, msg):
-
-    try:
-        print(colors[type] + msg + colors["end"])
-    except KeyError:
-        print(msg)
-
-
-def setup_logging():
+def setup_logging(cmd_line):
     """ Configure our logger """
     logger = logging.getLogger()
 
     logger.handlers = []
 
-    if cmd_line.debug:
-        log_level = logging.DEBUG
-    else:
-        log_level = logging.INFO
+    log_level = logging.INFO
 
     logger.setLevel(log_level)
 
-    context_filter = ContextFilter()
-    logger.addFilter(context_filter.filter)
+    #context_filter = ContextFilter()
+    #logger.addFilter(context_filter.filter)
 
     # Log format
     formatter = logging.Formatter(
@@ -484,32 +477,35 @@ def setup_logging():
         file_handler.setFormatter(formatter)
         logger.addHandler(file_handler)
     except PermissionError as permission_error:
-        print("Can't open {0} : {1}".format(LOG_FILE, permission_error))
+        log_error("Can't open {0} : {1}".format(LOG_FILE, permission_error))
 
     # Stdout logger
-    if cmd_line.verbose:
+    if not cmd_line.quiet:
         stream_handler = logging.StreamHandler()
         stream_handler.setLevel(log_level)
         stream_handler.setFormatter(formatter)
         logger.addHandler(stream_handler)
 
+    log_info("All logs will be stored in {}".format(LOG_FILE))
+
+
 def log_error(msg):
     logging.error(RED + msg + ENDC)
+
 
 def log_warning(msg):
     logging.warning(YELLOW + msg + ENDC)
 
+
 def log_info(msg):
     logging.info(GREEN + msg + ENDC)
 
-def log_debug(msg):
-    logging.debug(msg)
 
 def main():
     # Command line options
     cmd_line = parse_options()
 
-    setup_logging()
+    setup_logging(cmd_line)
 
     global TEST
     TEST = cmd_line.test
@@ -519,7 +515,7 @@ def main():
         return
 
     if TEST:
-        logging.info(YELLOW + "Running the installer in testing mode..." + ENDC)
+        log_info("Running the installer in testing mode...")
 
     if cmd_line.bumblebee:
         driver = "bumblebee"
@@ -527,21 +523,21 @@ def main():
         driver = check_device()
 
     if not driver and cmd_line.force:
-        logging.warning(YELLOW + "Nvidia card is not in the database. Forcing nvidia driver installation anyways..." + ENDC)
+        log_warning("Nvidia card is not in the database. Forcing nvidia driver installation anyways...")
         driver = "nvidia"
 
     if driver:
-        logging.info("Installing %s driver...", driver)
+        log_info("Installing {} driver...".format(driver))
         if install(driver):
             post_install(driver)
             # The nvidia package contains a file which blacklists the nouveau
             # module, so rebooting is necessary.
             if TEST:
-                logging.info(BOLD + "Installation finished. Nothing has been modified as testing mode was ON." + ENDC)
+                log_info("Installation finished. Nothing has been modified as testing mode was ON.")
             else:
-                logging.info(BOLD + "Installation finished. You need to reboot now!" + ENDC)
+                log_info("Installation finished. You need to reboot now!")
     else:
-        logging.error(RED + "Couldn't find a driver suitable for your graphics card." + ENDC)
+        log_error("Couldn't find a driver suitable for your graphics card.")
 
 
 if __name__ == "__main__":
