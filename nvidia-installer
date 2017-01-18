@@ -402,7 +402,7 @@ def post_install(driver):
         desktop_path = "/usr/share/applications/nvidia-settings.desktop"
         if os.path.exists(desktop_path):
             log_info("Patching {}...".format(desktop_path))
-                cmd = ["sed", "-i", 's|Exec=/usr/bin/nvidia-settings|Exec=optirun -b none /usr/bin/nvidia-settings -c :8|', desktop_path]
+            cmd = ["sed", "-i", 's|Exec=/usr/bin/nvidia-settings|Exec=optirun -b none /usr/bin/nvidia-settings -c :8|', desktop_path]
             if TEST:
                 log_info(" ".join(cmd))
             else:
