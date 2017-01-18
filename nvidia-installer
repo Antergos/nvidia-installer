@@ -32,7 +32,7 @@ import os
 import logging
 import subprocess
 
-VERSION = "0.0.7"
+VERSION = "0.0.8"
 TEST = True
 
 LOG_FILE = "/tmp/nvidia-installer.log"
@@ -416,7 +416,7 @@ def patch_nvidia_settings(patch=True):
             try:
                 subprocess.check_output(cmd, stderr=subprocess.STDOUT)
             except subprocess.CalledProcessError as err:
-                log_warning("Cannot patch {0} file : {1}".format(desktop_path, err.output.decode()))
+                log_warning("Cannot modify {0} file : {1}".format(desktop_path, err.output.decode()))
 
 
 def post_install(driver):
@@ -434,27 +434,26 @@ def post_install(driver):
             log_warning("NOT adding user 'root' to bumblebee or video groups! Remember to add your users to those groups")
 
         enable_service("bumblebeed.service")
-
-        patch_nvidia_settings(True)
-    elif driver == "nouveau":
-        enable_service("bumblebeed.service", False)
-        if os.path.exists(nvidia_conf_path):
-            log_info("Removing {} file...".format(nvidia_conf_path))
-            if not TEST:
-                os.remove(nvidia_conf_path)
+        patch_nvidia_settings()
     else:
-        # nvidia
-        patch_nvidia_settings(False)
         enable_service("bumblebeed.service", False)
-        log_info("Creating {} file...".format(nvidia_conf_path))
-        if not TEST:
-            with open(nvidia_conf_path, 'w') as nvidia:
-                nvidia.write('Section "Device"\n')
-                nvidia.write('    Identifier "Nvidia Card"\n')
-                nvidia.write('    Driver "nvidia"\n')
-                nvidia.write('    VendorName "NVIDIA Corporation"\n')
-                nvidia.write('    Option "NoLogo" "true"\n')
-                nvidia.write('EndSection\n')
+        patch_nvidia_settings(False)
+        if driver == "nouveau":
+            if os.path.exists(nvidia_conf_path):
+                log_info("Removing {} file...".format(nvidia_conf_path))
+                if not TEST:
+                    os.remove(nvidia_conf_path)
+        else:
+            # nvidia
+            log_info("Creating {} file...".format(nvidia_conf_path))
+            if not TEST:
+                with open(nvidia_conf_path, 'w') as nvidia:
+                    nvidia.write('Section "Device"\n')
+                    nvidia.write('    Identifier "Nvidia Card"\n')
+                    nvidia.write('    Driver "nvidia"\n')
+                    nvidia.write('    VendorName "NVIDIA Corporation"\n')
+                    nvidia.write('    Option "NoLogo" "true"\n')
+                    nvidia.write('EndSection\n')
 
 
 def parse_options():
