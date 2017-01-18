@@ -362,9 +362,8 @@ def get_installed_packages():
 def add_user_to_group(user, group):
     log_info("Adding user {0} to {1} group...".format(user, group))
     cmd = ["gpasswd", "-a", user, group]
-    if TEST:
-        log_info(" ".join(cmd))
-    else:
+    log_info(" ".join(cmd))
+    if not TEST:
         try:
             subprocess.check_output(cmd, stderr=subprocess.STDOUT)
         except subprocess.CalledProcessError as err:
@@ -380,16 +379,44 @@ def get_user():
     return user
 
 
-def enable_service(service):
-    log_info("Enabling {} service...".format(service))
-    cmd = ["systemctl", "enable", service]
-    if TEST:
+def enable_service(service, enable=True):
+    if not service.endswith(".service"):
+        service += ".service"
+
+    if os.path.exists("/usr/lib/systemd/system/{}".format(service)):
+        cmd = ["systemctl"]
+        if enable:
+            log_info("Enabling {} service...".format(service))
+            cmd += ["enable", service]
+        else:
+            log_info("Disabling {} service...".format(service))
+            cmd += ["disable", service]
         log_info(" ".join(cmd))
-    else:
-        try:
-            subprocess.check_output(cmd, stderr=subprocess.STDOUT)
-        except subprocess.CalledProcessError as err:
-            log_warning("Cannot enable {0} service: {1}".format(service, err.output.decode()))
+        if not TEST:
+            try:
+                subprocess.check_output(cmd, stderr=subprocess.STDOUT)
+            except subprocess.CalledProcessError as err:
+                log_warning("Cannot enable/disable {0} service: {1}".format(service, err.output.decode()))
+
+
+def patch_nvidia_settings(patch=True):
+    # Fix nvidia-settings.desktop
+    desktop_path = "/usr/share/applications/nvidia-settings.desktop"
+    if os.path.exists(desktop_path):
+        if patch:
+            log_info("Patching {}...".format(desktop_path))
+            cmd = ["sed", "-i", 's|Exec=/usr/bin/nvidia-settings|Exec=optirun -b none /usr/bin/nvidia-settings -c :8|', desktop_path]
+        else:
+            log_info("Unpatching {}...".format(desktop_path))
+            cmd = ["sed", "-i", 's|Exec=optirun -b none /usr/bin/nvidia-settings -c :8|Exec=/usr/bin/nvidia-settings|', desktop_path]
+
+        if TEST:
+            log_info(" ".join(cmd))
+        else:
+            try:
+                subprocess.check_output(cmd, stderr=subprocess.STDOUT)
+            except subprocess.CalledProcessError as err:
+                log_warning("Cannot patch {0} file : {1}".format(desktop_path, err.output.decode()))
 
 
 def post_install(driver):
@@ -408,26 +435,17 @@ def post_install(driver):
 
         enable_service("bumblebeed.service")
 
-        # Fix nvidia-settings.desktop
-        desktop_path = "/usr/share/applications/nvidia-settings.desktop"
-        if os.path.exists(desktop_path):
-            log_info("Patching {}...".format(desktop_path))
-            cmd = ["sed", "-i", 's|Exec=/usr/bin/nvidia-settings|Exec=optirun -b none /usr/bin/nvidia-settings -c :8|', desktop_path]
-            if TEST:
-                log_info(" ".join(cmd))
-            else:
-                try:
-                    subprocess.check_output(cmd, stderr=subprocess.STDOUT)
-                except subprocess.CalledProcessError as err:
-                    log_warning("Cannot patch {0} file : {1}".format(desktop_path, err.output.decode()))
-        else:
-            log_info("Could not find {0} file. Is nvidia-settings installed?".format(desktop_path))
+        patch_nvidia_settings(True)
     elif driver == "nouveau":
+        enable_service("bumblebeed.service", False)
         if os.path.exists(nvidia_conf_path):
             log_info("Removing {} file...".format(nvidia_conf_path))
             if not TEST:
                 os.remove(nvidia_conf_path)
     else:
+        # nvidia
+        patch_nvidia_settings(False)
+        enable_service("bumblebeed.service", False)
         log_info("Creating {} file...".format(nvidia_conf_path))
         if not TEST:
             with open(nvidia_conf_path, 'w') as nvidia:
