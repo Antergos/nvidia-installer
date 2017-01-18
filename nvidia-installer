@@ -32,7 +32,7 @@ import os
 import logging
 import subprocess
 
-VERSION = "0.0.6"
+VERSION = "0.0.7"
 TEST = True
 
 LOG_FILE = "/tmp/nvidia-installer.log"
@@ -247,24 +247,31 @@ CLASS_ID = "0x03"
 VENDOR_ID = "0x10de"
 
 PACKAGES = {
+    "nouveau": ["xf86-video-nouveau", "mesa-libgl"],
     "nvidia": ["nvidia", "nvidia-utils", "nvidia-libgl", "libvdpau"],
     "nvidia340xx": ["nvidia-340xx", "nvidia-340xx-utils", "nvidia-340xx-libgl", "libvdpau"],
     "nvidia304xx": ["nvidia-304xx", "nvidia-304xx-utils", "nvidia-304xx-libgl", "libvdpau"],
     "bumblebee": ["bumblebee", "mesa", "xf86-video-intel", "nvidia", "virtualgl", "nvidia-settings", "bbswitch"]}
 
 PACKAGES_X86_64 = {
+    "nouveau": ["lib32-mesa-libgl"],
     "nvidia": ["lib32-nvidia-libgl", "lib32-libvdpau"],
     "nvidia340xx": ["lib32-nvidia-340xx-libgl", "lib32-libvdpau"],
     "nvidia304xx": ["lib32-nvidia-304xx-libgl", "lib32-libvdpau"],
     "bumblebee": ["lib32-nvidia-utils", "lib32-virtualgl", "lib32-mesa-libgl"]}
 
 CONFLICTS = {
+    "nouveau": ["nvidia", "nvidia-utils", "nvidia-libgl",
+        "nvidia-340xx", "nvidia-340xx-utils", "nvidia-340xx-libgl",
+        "nvidia-304xx", "nvidia-304xx-utils", "nvidia-304xx-libgl",
+        "bumblebee", "virtualgl", "nvidia-settings", "bbswitch"],
     "nvidia": ["xf86-video-nouveau", "mesa-libgl"],
     "nvidia340xx": ["xf86-video-nouveau", "mesa-libgl"],
     "nvidia304xx": ["xf86-video-nouveau", "mesa-libgl"],
     "bumblebee": ["xf86-video-nouveau", "nvidia-libgl", "nvidia-340xx-libgl", "nvidia-304xx-libgl"]}
 
 CONFLICTS_X86_64 = {
+    "nouveau": ["lib32-nvidia-libgl", "lib32-nvidia-340xx-libgl", "lib32-nvidia-304xx-libgl", "lib32-nvidia-utils", "lib32-virtualgl"],
     "nvidia": ["lib32-mesa-libgl"],
     "nvidia340xx": ["lib32-mesa-libgl"],
     "nvidia304xx": ["lib32-mesa-libgl"],
@@ -387,6 +394,9 @@ def enable_service(service):
 
 def post_install(driver):
     """ Run post installation actions here """
+
+    nvidia_conf_path = "/etc/X11/xorg.conf.d/20-nvidia.conf"
+
     if driver == "bumblebee":
         user = get_user()
 
@@ -412,11 +422,15 @@ def post_install(driver):
                     log_warning("Cannot patch {0} file : {1}".format(desktop_path, err.output.decode()))
         else:
             log_info("Could not find {0} file. Is nvidia-settings installed?".format(desktop_path))
+    elif driver == "nouveau":
+        if os.path.exists(nvidia_conf_path):
+            log_info("Removing {} file...".format(nvidia_conf_path))
+            if not TEST:
+                os.remove(nvidia_conf_path)
     else:
-        path = "/etc/X11/xorg.conf.d/20-nvidia.conf"
-        log_info("Creating {} file...".format(path))
+        log_info("Creating {} file...".format(nvidia_conf_path))
         if not TEST:
-            with open(path, 'w') as nvidia:
+            with open(nvidia_conf_path, 'w') as nvidia:
                 nvidia.write('Section "Device"\n')
                 nvidia.write('    Identifier "Nvidia Card"\n')
                 nvidia.write('    Driver "nvidia"\n')
@@ -449,10 +463,10 @@ def parse_options():
         help="Supress log messages",
         action="store_true")
 
-    #parser.add_argument(
-    #    "-n", "--nouveau",
-    #    help="Restores nouveau (open) nvidia driver",
-    #    action="store_true")
+    parser.add_argument(
+        "-n", "--nouveau",
+        help="Restores nouveau (open) nvidia driver",
+        action="store_true")
 
     return parser.parse_args()
 
@@ -524,6 +538,8 @@ def main():
 
     if cmd_line.bumblebee:
         driver = "bumblebee"
+    elif cmd_line.nouveau:
+        driver = "nouveau"
     else:
         driver = check_device()
 
