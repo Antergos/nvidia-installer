@@ -390,8 +390,11 @@ def post_install(driver):
     if driver == "bumblebee":
         user = get_user()
 
-        add_user_to_group(user, "bumblebee")
-        add_user_to_group(user, "video")
+        if user != "root":
+            add_user_to_group(user, "bumblebee")
+            add_user_to_group(user, "video")
+        else:
+            log_warning("NOT adding user 'root' to bumblebee or video groups! Remember to add your users to those groups")
 
         enable_service("bumblebeed.service")
 
