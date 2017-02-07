@@ -32,7 +32,7 @@ import os
 import logging
 import subprocess
 
-VERSION = "1.0.0"
+VERSION = "1.1"
 TEST = True
 
 LOG_FILE = "/tmp/nvidia-installer.log"
@@ -455,6 +455,50 @@ def post_install(driver):
                     nvidia.write('    Option "NoLogo" "true"\n')
                     nvidia.write('EndSection\n')
 
+    fix_mkinitcpio(driver)
+
+
+def fix_mkinitcpio(driver):
+    """ Remove nouveau from MODULES line in mkinitcpio.conf """
+
+    mkinitcpio_path = "/etc/mkinitcpio.conf"
+
+    if driver == "nouveau":
+        log_info("Not changing {}".format(mkinitcpio_path))
+        return
+
+    # Read mkinitcpio.conf
+    with open(mkinitcpio_path) as mkinitcpio_file:
+        mklines = mkinitcpio_file.readlines()
+
+    modified = False
+    new_mklines = []
+    for line in mklines:
+        # Remove nouveau from MODULES line
+        if line.startswith("MODULES") and "nouveau" in line:
+            old_line = line
+            line = line.replace("nouveau", "")
+            line = line.replace(",,", ",")
+            line = line.replace('",', '"')
+            line = line.replace(',"', '"')
+            msg = "{0} will be changed to {1} in {2}".format(old_line.strip("\n"), line.strip("\n"), mkinitcpio_path)
+            log_info(msg)
+            modified = True
+        new_mklines.append(line)
+
+    if modified and not TEST:
+        try:
+            with open(mkinitcpio_path, "w") as mkinitcpio_file:
+                for line in new_mklines:
+                    mkinitcpio_file.write(line)
+
+            cmd = ["mkinitcpio", "-p", "linux"]
+            res = subprocess.check_output(cmd, stderr=subprocess.STDOUT).decode().split('\n')
+        except subprocess.CalledProcessError as err:
+            log_warning("Cannot run {}, please run it manually before rebooting!".format(' '.join(cmd)))
+        except PermissionError:
+            log_error("This script must be run with administrative privileges!")
+
 
 def parse_options():
     desc = "Antergos Nvidia Installer v{0}".format(VERSION)
@@ -548,6 +592,9 @@ def main():
 
     if not TEST and os.getuid() != 0:
         log_error("This installer must be run with administrative privileges (use sudo)")
+        return
+    elif TEST and os.getuid() == 0:
+        log_error("Do not run this installer in test mode with administrative privileges")
         return
 
     if TEST:
