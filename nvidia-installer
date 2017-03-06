@@ -45,15 +45,15 @@ BOLD ='\033[1m'
 
 """
 For GeForce 400 series cards and newer [NVCx and newer], install the nvidia or
-    nvidia-lts package along with nvidia-libgl, available in the official repositories.
+    nvidia-lts package, available in the official repositories.
 
 For GeForce 8000/9000 and 100-300 series cards [NV5x, NV8x, NV9x and NVAx] from
-    around 2006-2010, install the nvidia-340xx or nvidia-340xx-lts package along
-    with nvidia-340xx-libgl, available in the official repositories.
+    around 2006-2010, install the nvidia-340xx or nvidia-340xx-lts package,
+    available in the official repositories.
 
 For GeForce 6000/7000 series cards [NV4x and NV6x] from around 2004-2006, install
-    the nvidia-304xx or nvidia-304xx-lts package along with nvidia-304xx-libgl,
-    available in the official repositories.
+    the nvidia-304xx or nvidia-304xx-lts package, available in the official
+    repositories.
 """
 
 DEVICES = { "nvidia" : [
