@@ -32,7 +32,7 @@ import os
 import logging
 import subprocess
 
-VERSION = "1.1"
+VERSION = "1.2"
 TEST = True
 
 LOG_FILE = "/tmp/nvidia-installer.log"
@@ -249,33 +249,37 @@ VENDOR_ID = "0x10de"
 PACKAGES = {
     "nouveau": ["xf86-video-nouveau", "mesa-libgl"],
     "nvidia": ["nvidia", "nvidia-utils", "nvidia-libgl", "libvdpau"],
-    "nvidia340xx": ["nvidia-340xx", "nvidia-340xx-utils", "nvidia-340xx-libgl", "libvdpau"],
-    "nvidia304xx": ["nvidia-304xx", "nvidia-304xx-utils", "nvidia-304xx-libgl", "libvdpau"],
-    "bumblebee": ["bumblebee", "mesa", "xf86-video-intel", "nvidia", "virtualgl", "nvidia-settings", "bbswitch"]}
+    "nvidia340xx": ["nvidia-340xx", "nvidia-340xx-utils", "libvdpau"],
+    "nvidia304xx": ["nvidia-304xx", "nvidia-304xx-utils", "libvdpau"],
+    "bumblebee": ["bumblebee", "mesa", "xf86-video-intel", "nvidia", "virtualgl",
+        "nvidia-settings", "bbswitch"]}
 
 PACKAGES_X86_64 = {
     "nouveau": ["lib32-mesa-libgl"],
     "nvidia": ["lib32-nvidia-libgl", "lib32-libvdpau"],
-    "nvidia340xx": ["lib32-nvidia-340xx-libgl", "lib32-libvdpau"],
-    "nvidia304xx": ["lib32-nvidia-304xx-libgl", "lib32-libvdpau"],
+    "nvidia340xx": ["lib32-nvidia-340xx-utils", "lib32-libvdpau"],
+    "nvidia304xx": ["lib32-nvidia-304xx-utils", "lib32-libvdpau"],
     "bumblebee": ["lib32-nvidia-utils", "lib32-virtualgl", "lib32-mesa-libgl"]}
 
 CONFLICTS = {
     "nouveau": ["nvidia", "nvidia-utils", "nvidia-libgl",
-        "nvidia-340xx", "nvidia-340xx-utils", "nvidia-340xx-libgl",
-        "nvidia-304xx", "nvidia-304xx-utils", "nvidia-304xx-libgl",
+        "nvidia-340xx", "nvidia-340xx-utils",
+        "nvidia-304xx", "nvidia-304xx-utils",
         "bumblebee", "virtualgl", "nvidia-settings", "bbswitch"],
     "nvidia": ["xf86-video-nouveau", "mesa-libgl"],
     "nvidia340xx": ["xf86-video-nouveau", "mesa-libgl"],
     "nvidia304xx": ["xf86-video-nouveau", "mesa-libgl"],
-    "bumblebee": ["xf86-video-nouveau", "nvidia-libgl", "nvidia-340xx-libgl", "nvidia-304xx-libgl"]}
+    "bumblebee": ["xf86-video-nouveau", "nvidia-libgl", "nvidia-340xx-utils",
+        "nvidia-304xx-utils"]}
 
 CONFLICTS_X86_64 = {
-    "nouveau": ["lib32-nvidia-libgl", "lib32-nvidia-340xx-libgl", "lib32-nvidia-304xx-libgl", "lib32-nvidia-utils", "lib32-virtualgl"],
+    "nouveau": ["lib32-nvidia-libgl", "lib32-nvidia-340xx-utils",
+        "lib32-nvidia-304xx-utils", "lib32-nvidia-utils", "lib32-virtualgl"],
     "nvidia": ["lib32-mesa-libgl"],
     "nvidia340xx": ["lib32-mesa-libgl"],
     "nvidia304xx": ["lib32-mesa-libgl"],
-    "bumblebee": ["lib32-nvidia-libgl", "lib32-nvidia-340xx-libgl", "lib32-nvidia-304xx-libgl"]}
+    "bumblebee": ["lib32-nvidia-libgl", "lib32-nvidia-340xx-utils",
+        "lib32-nvidia-304xx-utils"]}
 
 
 def check_device():
