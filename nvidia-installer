@@ -570,6 +570,7 @@ def setup_logging(cmd_line):
         stream_handler.setFormatter(formatter)
         logger.addHandler(stream_handler)
 
+    log_info("Antergos Nvidia Installer v{}".format(VERSION))
     log_info("All logs will be stored in {}".format(LOG_FILE))
 
 
