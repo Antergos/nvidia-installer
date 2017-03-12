@@ -32,7 +32,7 @@ import os
 import logging
 import subprocess
 
-VERSION = "1.7"
+VERSION = "1.8"
 TEST = True
 
 LOG_FILE = "/tmp/nvidia-installer.log"
@@ -257,6 +257,13 @@ PACKAGES = {
     "bumblebee": ["bumblebee", "mesa", "xf86-video-intel", "nvidia", "virtualgl",
         "nvidia-settings", "bbswitch"]}
 
+PACKAGES_LTS = {
+    "nouveau": [],
+    "nvidia": ["nvidia-lts"],
+    "nvidia340xx": ["nvidia-340xx-lts"],
+    "nvidia304xx": ["nvidia-304xx-lts"],
+    "bumblebee": ["nvidia-lts"]}
+
 PACKAGES_X86_64 = {
     "nouveau": ["lib32-mesa"],
     "nvidia": ["lib32-nvidia-utils", "lib32-libvdpau"],
@@ -265,9 +272,9 @@ PACKAGES_X86_64 = {
     "bumblebee": ["lib32-nvidia-utils", "lib32-virtualgl", "lib32-mesa"]}
 
 CONFLICTS = {
-    "nouveau": ["nvidia", "nvidia-utils", "nvidia-libgl",
-        "nvidia-340xx", "nvidia-340xx-utils",
-        "nvidia-304xx", "nvidia-304xx-utils",
+    "nouveau": ["nvidia", "nvidia-lts" "nvidia-utils", "nvidia-libgl",
+        "nvidia-340xx", "nvidia-340xx-lts", "nvidia-340xx-utils",
+        "nvidia-304xx", "nvidia-304xx-lts", "nvidia-304xx-utils",
         "bumblebee", "virtualgl", "nvidia-settings", "bbswitch"],
     "nvidia": ["xf86-video-nouveau"],
     "nvidia340xx": ["xf86-video-nouveau"],
@@ -345,6 +352,9 @@ def install(driver):
     if os.uname()[-1] == "x86_64":
         packages.extend(PACKAGES_X86_64[driver])
         conflicts.extend(CONFLICTS_X86_64[driver])
+
+    if os.path.exists('/boot/vmlinuz-linux-lts'):
+        packages.extend(PACKAGES_LTS[driver])
 
     log_info("Removing conflicting packages...")
     installed_packages = get_installed_packages()
