@@ -32,7 +32,7 @@ import os
 import logging
 import subprocess
 
-VERSION = "1.4"
+VERSION = "1.5"
 TEST = True
 
 LOG_FILE = "/tmp/nvidia-installer.log"
@@ -56,7 +56,7 @@ For GeForce 6000/7000 series cards [NV4x and NV6x] from around 2004-2006, instal
     repositories.
 
 mesa-17.0.0-3 can now be installed side-by-side with nvidia-378.13 driver without
-any libgl/libglx hacks, and with the help of Fedora and upstream xorg-server patches.
+any libgl/libglx hacks, with the help of Fedora and upstream xorg-server patches.
 """
 
 DEVICES = { "nvidia" : [
@@ -251,7 +251,7 @@ VENDOR_ID = "0x10de"
 
 PACKAGES = {
     "nouveau": ["xf86-video-nouveau", "mesa"],
-    "nvidia": ["nvidia", "nvidia-utils", "nvidia-libgl", "libvdpau"],
+    "nvidia": ["nvidia", "nvidia-utils", "libvdpau"],
     "nvidia340xx": ["nvidia-340xx", "nvidia-340xx-utils", "libvdpau"],
     "nvidia304xx": ["nvidia-304xx", "nvidia-304xx-utils", "libvdpau"],
     "bumblebee": ["bumblebee", "mesa", "xf86-video-intel", "nvidia", "virtualgl",
@@ -259,7 +259,7 @@ PACKAGES = {
 
 PACKAGES_X86_64 = {
     "nouveau": ["lib32-mesa"],
-    "nvidia": ["lib32-nvidia-libgl", "lib32-libvdpau"],
+    "nvidia": ["lib32-libvdpau"],
     "nvidia340xx": ["lib32-nvidia-340xx-utils", "lib32-libvdpau"],
     "nvidia304xx": ["lib32-nvidia-304xx-utils", "lib32-libvdpau"],
     "bumblebee": ["lib32-nvidia-utils", "lib32-virtualgl", "lib32-mesa"]}
@@ -270,8 +270,8 @@ CONFLICTS = {
         "nvidia-304xx", "nvidia-304xx-utils",
         "bumblebee", "virtualgl", "nvidia-settings", "bbswitch"],
     "nvidia": ["xf86-video-nouveau"],
-    "nvidia340xx": ["xf86-video-nouveau", "mesa"],
-    "nvidia304xx": ["xf86-video-nouveau", "mesa"],
+    "nvidia340xx": ["xf86-video-nouveau"],
+    "nvidia304xx": ["xf86-video-nouveau"],
     "bumblebee": ["xf86-video-nouveau", "nvidia-libgl", "nvidia-340xx-utils",
         "nvidia-304xx-utils"]}
 
@@ -279,8 +279,8 @@ CONFLICTS_X86_64 = {
     "nouveau": ["lib32-nvidia-libgl", "lib32-nvidia-340xx-utils",
         "lib32-nvidia-304xx-utils", "lib32-nvidia-utils", "lib32-virtualgl"],
     "nvidia": [],
-    "nvidia340xx": ["lib32-mesa"],
-    "nvidia304xx": ["lib32-mesa"],
+    "nvidia340xx": [],
+    "nvidia304xx": [],
     "bumblebee": ["lib32-nvidia-libgl", "lib32-nvidia-340xx-utils",
         "lib32-nvidia-304xx-utils"]}
 
