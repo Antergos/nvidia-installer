@@ -32,7 +32,7 @@ import os
 import logging
 import subprocess
 
-VERSION = "1.9"
+VERSION = "1.10"
 TEST = True
 
 LOG_FILE = "/tmp/nvidia-installer.log"
@@ -315,34 +315,6 @@ def check_device():
     return None
 
 
-def check_nvidia_drm_outputclass_conf():
-    nvidia_drm = [
-        'Section "OutputClass"',
-        'Identifier "intel"',
-        'MatchDriver "i915"',
-        'Driver "modesetting"',
-        'EndSection',
-        '',
-        'Section "OutputClass"',
-        'Identifier "nvidia"',
-        'MatchDriver "nvidia-drm"',
-        'Driver "nvidia"',
-        'Option "AllowEmptyInitialConfiguration"',
-        'Option "PrimaryGPU" "yes"',
-        'ModulePath "/usr/lib/nvidia/xorg"',
-        'EndSection']
-
-    path = '/etc/X11/xorg.conf.d/10-nvidia-drm-outputclass.conf'
-    if not os.path.exists(path):
-        if not TEST:
-            with open(path, 'w') as conf_file:
-                for line in nvidia_drm:
-                    conf_file.write(line + '\n')
-        log_info("File {} created.".format(path))
-    else:
-        log_info("File {} already exists, not modifying it.".format(path))
-
-
 def install(driver):
     """ Performs packages installation """
 
@@ -477,7 +449,6 @@ def post_install(driver):
         else:
             log_warning("NOT adding user 'root' to bumblebee or video groups! Remember to add your users to those groups")
 
-        check_nvidia_drm_outputclass_conf()
         enable_service("bumblebeed.service")
         patch_nvidia_settings()
     else:
