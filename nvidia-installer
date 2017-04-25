@@ -32,7 +32,7 @@ import os
 import logging
 import subprocess
 
-VERSION = "1.11"
+VERSION = "1.12"
 TEST = True
 
 LOG_FILE = "/tmp/nvidia-installer.log"
@@ -262,7 +262,7 @@ PACKAGES_LTS = {
     "nvidia": ["nvidia-lts"],
     "nvidia340xx": ["nvidia-340xx-lts"],
     "nvidia304xx": ["nvidia-304xx-lts"],
-    "bumblebee": ["nvidia-lts"]}
+    "bumblebee": ["nvidia-lts", "bbswitch-lts"]}
 
 PACKAGES_X86_64 = {
     "nouveau": ["lib32-mesa"],
@@ -275,7 +275,7 @@ CONFLICTS = {
     "nouveau": ["nvidia", "nvidia-lts" "nvidia-utils", "nvidia-libgl",
         "nvidia-340xx", "nvidia-340xx-lts", "nvidia-340xx-utils",
         "nvidia-304xx", "nvidia-304xx-lts", "nvidia-304xx-utils",
-        "bumblebee", "virtualgl", "nvidia-settings", "bbswitch"],
+        "bumblebee", "virtualgl", "nvidia-settings", "bbswitch", "bbswitch-lts"],
     "nvidia": ["xf86-video-nouveau"],
     "nvidia340xx": ["xf86-video-nouveau"],
     "nvidia304xx": ["xf86-video-nouveau"],
@@ -435,6 +435,25 @@ def patch_nvidia_settings(patch=True):
                 log_warning("Cannot modify {0} file : {1}".format(desktop_path, err.output.decode()))
 
 
+def remove_file(path):
+    if os.path.exists(path):
+        log_info("Removing {} file...".format(path))
+        if not TEST:
+            os.remove(path)
+    else:
+        log_info("{} not found. That's ok.".format(path))
+
+def create_nvidia_conf(path):
+    log_info("Creating {} file...".format(path))
+    if not TEST:
+        with open(path, 'w') as nvidia:
+            nvidia.write('Section "Device"\n')
+            nvidia.write('    Identifier "Nvidia Card"\n')
+            nvidia.write('    Driver "nvidia"\n')
+            nvidia.write('    VendorName "NVIDIA Corporation"\n')
+            nvidia.write('    Option "NoLogo" "true"\n')
+            nvidia.write('EndSection\n')
+
 def post_install(driver):
     """ Run post installation actions here """
 
@@ -442,7 +461,6 @@ def post_install(driver):
 
     if driver == "bumblebee":
         user = get_user()
-
         if user != "root":
             add_user_to_group(user, "bumblebee")
             add_user_to_group(user, "video")
@@ -452,24 +470,15 @@ def post_install(driver):
         enable_service("bumblebeed.service")
         patch_nvidia_settings()
     else:
+        # not bumblebee
         enable_service("bumblebeed.service", False)
         patch_nvidia_settings(False)
-        if driver == "nouveau":
-            if os.path.exists(nvidia_conf_path):
-                log_info("Removing {} file...".format(nvidia_conf_path))
-                if not TEST:
-                    os.remove(nvidia_conf_path)
-        else:
-            # nvidia
-            log_info("Creating {} file...".format(nvidia_conf_path))
-            if not TEST:
-                with open(nvidia_conf_path, 'w') as nvidia:
-                    nvidia.write('Section "Device"\n')
-                    nvidia.write('    Identifier "Nvidia Card"\n')
-                    nvidia.write('    Driver "nvidia"\n')
-                    nvidia.write('    VendorName "NVIDIA Corporation"\n')
-                    nvidia.write('    Option "NoLogo" "true"\n')
-                    nvidia.write('EndSection\n')
+
+    if driver.startswith("nvidia"):
+        create_nvidia_conf(nvidia_conf_path)
+    else:
+        # bumblebee and nouveau
+        remove_file(nvidia_conf_path)
 
     fix_mkinitcpio(driver)
 
