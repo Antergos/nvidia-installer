@@ -1,2 +1,2 @@
-# nvidia-installer
+# nVidia Installer
 Setup nvidia drivers in Antergos
