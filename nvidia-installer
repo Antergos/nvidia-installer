@@ -59,7 +59,8 @@ mesa-17.0.0-3 can now be installed side-by-side with nvidia-378.13 driver withou
 any libgl/libglx hacks, with the help of Fedora and upstream xorg-server patches.
 """
 
-DEVICES = { "nvidia" : [
+DEVICES = {
+    "nvidia" : [
     "0x06c0", "0x06c4", "0x06ca", "0x06cd", "0x06d1", "0x06d2", "0x06d8",
     "0x06d9", "0x06da", "0x06dc", "0x06dd", "0x06de", "0x06df", "0x0dc0",
     "0x0dc4", "0x0dc5", "0x0dc6", "0x0dcd", "0x0dce", "0x0dd1", "0x0dd2",
@@ -92,12 +93,12 @@ DEVICES = { "nvidia" : [
     "0x1211", "0x1212", "0x1213", "0x1241", "0x1243", "0x1244", "0x1245",
     "0x1246", "0x1247", "0x1248", "0x1249", "0x124b", "0x124d", "0x1251",
     "0x1280", "0x1281", "0x1282", "0x1284", "0x1286", "0x1287", "0x1288",
-    "0x1289", "0x1290", "0x1291", "0x1292", "0x1293", "0x1295", "0x1296",
-    "0x1298", "0x1299", "0x12b9", "0x12ba", "0x1340", "0x1341", "0x1346",
-    "0x1347", "0x1380", "0x1381", "0x1382", "0x1390", "0x1391", "0x1392",
-    "0x1393", "0x139a", "0x139b", "0x13b3", "0x13ba", "0x13bb", "0x13bc",
-    "0x13c0", "0x13c2", "0x13d7", "0x13d8", "0x13d9", "0x1401", "0x17c2",
-    "0x17f0", "0x1140", "0x1b81", "0x1c03", "0x1c82", "0x1c8c", "0x1c8d"],
+    "0x1289", "0x128b", "0x1290", "0x1291", "0x1292", "0x1293", "0x1295",
+    "0x1296", "0x1298", "0x1299", "0x12b9", "0x12ba", "0x1340", "0x1341",
+    "0x1346", "0x1347", "0x1380", "0x1381", "0x1382", "0x1390", "0x1391",
+    "0x1392", "0x1393", "0x139a", "0x139b", "0x13b3", "0x13ba", "0x13bb",
+    "0x13bc", "0x13c0", "0x13c2", "0x13d7", "0x13d8", "0x13d9", "0x1401",
+    "0x17c2", "0x17f0", "0x1140", "0x1b81"],
     "nvidia340xx" : [
     "0x0191", "0x0193", "0x0194", "0x0197", "0x019d", "0x019e", "0x0400",
     "0x0401", "0x0402", "0x0403", "0x0404", "0x0405", "0x0406", "0x0407",
@@ -285,10 +286,14 @@ CONFLICTS = {
 CONFLICTS_X86_64 = {
     "nouveau": ["lib32-nvidia-libgl", "lib32-nvidia-340xx-utils",
         "lib32-nvidia-304xx-utils", "lib32-nvidia-utils", "lib32-virtualgl"],
-    "nvidia": ["lib32-nvidia-libgl", "lib32-nvidia-340xx-utils", "lib32-nvidia-304xx-utils"],
-    "nvidia340xx": ["lib32-nvidia-libgl", "lib32-nvidia-utils", "lib32-nvidia-304xx-utils"],
-    "nvidia304xx": ["lib32-nvidia-libgl", "lib32-nvidia-utils", "lib32-nvidia-340xx-utils"],
-    "bumblebee": ["lib32-nvidia-libgl", "lib32-nvidia-340xx-utils", "lib32-nvidia-304xx-utils"]}
+    "nvidia": ["lib32-nvidia-libgl", "lib32-nvidia-340xx-utils",
+        "lib32-nvidia-304xx-utils"],
+    "nvidia340xx": ["lib32-nvidia-libgl", "lib32-nvidia-utils",
+        "lib32-nvidia-304xx-utils"],
+    "nvidia304xx": ["lib32-nvidia-libgl", "lib32-nvidia-utils",
+        "lib32-nvidia-340xx-utils"],
+    "bumblebee": ["lib32-nvidia-libgl", "lib32-nvidia-340xx-utils",
+        "lib32-nvidia-304xx-utils"]}
 
 
 def check_device():
@@ -340,7 +345,8 @@ def install(driver):
                 try:
                     subprocess.check_output(cmd + [conflict], stderr=subprocess.STDOUT)
                 except subprocess.CalledProcessError as err:
-                    log_error("Cannot remove conflicting package {0}: {1}".format(conflict, err.output.decode()))
+                    msg = "Cannot remove conflicting package {0}: {1}"
+                    log_error(msg.format(conflict, err.output.decode()))
                     return False
 
     log_info("Downloading and installing driver packages, please wait...")
@@ -352,7 +358,8 @@ def install(driver):
         try:
             subprocess.check_output(cmd, stderr=subprocess.STDOUT)
         except subprocess.CalledProcessError as err:
-            log_error("Cannot install required packages: {}".format(err.output.decode()))
+            msg = "Cannot install required packages: {}"
+            log_error(msg.format(err.output.decode()))
             return False
 
     return True
@@ -369,9 +376,11 @@ def get_installed_packages():
             if len(line) > 0:
                 installed_packages.append(line[0])
     except subprocess.CalledProcessError as err:
-        log_warning("Cannot check installed packages (pacman -Q): {}".format(err.output.decode()))
+        msg = "Cannot check installed packages (pacman -Q): {}"
+        log_warning(msg.format(err.output.decode()))
     except OSError as err:
-        log_warning("Cannot check installed packages (pacman -Q): {}".format(err))
+        msg = "Cannot check installed packages (pacman -Q): {}"
+        log_warning(msg.format(err))
     return installed_packages
 
 
@@ -383,7 +392,8 @@ def add_user_to_group(user, group):
         try:
             subprocess.check_output(cmd, stderr=subprocess.STDOUT)
         except subprocess.CalledProcessError as err:
-            log_warning("Cannot add user {0} to the {1} group: {2}".format(user, group, err.output.decode()))
+            msg = "Cannot add user {0} to the {1} group: {2}"
+            log_warning(msg.format(user, group, err.output.decode()))
 
 
 def get_user():
@@ -412,7 +422,8 @@ def enable_service(service, enable=True):
             try:
                 subprocess.check_output(cmd, stderr=subprocess.STDOUT)
             except subprocess.CalledProcessError as err:
-                log_warning("Cannot enable/disable {0} service: {1}".format(service, err.output.decode()))
+                msg = "Cannot enable/disable {0} service: {1}"
+                log_warning(msg.format(service, err.output.decode()))
 
 
 def patch_nvidia_settings(patch=True):
@@ -421,10 +432,12 @@ def patch_nvidia_settings(patch=True):
     if os.path.exists(desktop_path):
         if patch:
             log_info("Patching {}...".format(desktop_path))
-            cmd = ["sed", "-i", 's|Exec=/usr/bin/nvidia-settings|Exec=optirun -b none /usr/bin/nvidia-settings -c :8|', desktop_path]
+            sed = 's|Exec=/usr/bin/nvidia-settings|Exec=optirun -b none /usr/bin/nvidia-settings -c :8|'
+            cmd = ["sed", "-i", sed, desktop_path]
         else:
             log_info("Unpatching {}...".format(desktop_path))
-            cmd = ["sed", "-i", 's|Exec=optirun -b none /usr/bin/nvidia-settings -c :8|Exec=/usr/bin/nvidia-settings|', desktop_path]
+            sed = 's|Exec=optirun -b none /usr/bin/nvidia-settings -c :8|Exec=/usr/bin/nvidia-settings|'
+            cmd = ["sed", "-i", sed, desktop_path]
 
         if TEST:
             log_info(" ".join(cmd))
@@ -432,7 +445,8 @@ def patch_nvidia_settings(patch=True):
             try:
                 subprocess.check_output(cmd, stderr=subprocess.STDOUT)
             except subprocess.CalledProcessError as err:
-                log_warning("Cannot modify {0} file : {1}".format(desktop_path, err.output.decode()))
+                msg = "Cannot modify {0} file : {1}"
+                log_warning(msg.format(desktop_path, err.output.decode()))
 
 
 def remove_file(path):
@@ -465,7 +479,9 @@ def post_install(driver):
             add_user_to_group(user, "bumblebee")
             add_user_to_group(user, "video")
         else:
-            log_warning("NOT adding user 'root' to bumblebee or video groups! Remember to add your users to those groups")
+            msg = "NOT adding user 'root' to bumblebee or video groups! " \
+                "Remember to add your users to those groups"
+            log_warning()
 
         enable_service("bumblebeed.service")
         patch_nvidia_settings()
@@ -504,8 +520,8 @@ def fix_mkinitcpio(driver):
                 line = line.replace(",,", ",")
                 line = line.replace('",', '"')
                 line = line.replace(',"', '"')
-                msg = "{0} will be changed to {1} in {2}".format(old_line.strip("\n"), line.strip("\n"), mkinitcpio_path)
-                log_info(msg)
+                msg = "{0} will be changed to {1} in {2}"
+                log_info(msg.format(old_line.strip("\n"), line.strip("\n"), mkinitcpio_path))
                 modified = True
         new_mklines.append(line)
 
@@ -516,13 +532,16 @@ def fix_mkinitcpio(driver):
                     mkinitcpio_file.write(line)
 
             cmd = ["mkinitcpio", "-p", "linux"]
-            res = subprocess.check_output(cmd, stderr=subprocess.STDOUT).decode().split('\n')
+            res = subprocess.check_output(cmd, stderr=subprocess.STDOUT)
+            res = res.decode().split('\n')
 
             if os.path.exists('/boot/vmlinuz-linux-lts'):
                 cmd = ["mkinitcpio", "-p", "linux-lts"]
-                res = subprocess.check_output(cmd, stderr=subprocess.STDOUT).decode().split('\n')
+                res = subprocess.check_output(cmd, stderr=subprocess.STDOUT)
+                res = res.decode().split('\n')
         except subprocess.CalledProcessError as err:
-            log_warning("Cannot run {}, please run it manually before rebooting!".format(' '.join(cmd)))
+            msg = "Cannot run {}, please run it manually before rebooting!"
+            log_warning(msg.format(' '.join(cmd)))
         except PermissionError:
             log_error("This script must be run with administrative privileges!")
 
@@ -636,7 +655,9 @@ def main():
         driver = check_device()
 
     if not driver and cmd_line.force:
-        log_warning("Your graphics card is not in our database. Forcing nvidia driver installation anyways...")
+        msg = "Your graphics card is not in our database. " \
+            "Forcing nvidia driver installation anyways..."
+        log_warning(msg)
         driver = "nvidia"
 
     if driver:
@@ -646,7 +667,8 @@ def main():
             # The nvidia package contains a file which blacklists the nouveau
             # module, so rebooting is necessary.
             if TEST:
-                log_info("Installation finished. Nothing has been modified as testing mode was ON.")
+                msg = "Installation finished. Nothing has been modified as testing mode was ON."
+                log_info(msg)
             else:
                 log_info("Installation finished. You need to reboot now!")
     else:
