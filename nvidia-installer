@@ -32,7 +32,7 @@ import os
 import logging
 import subprocess
 
-VERSION = "1.12"
+VERSION = "1.13"
 TEST = True
 
 LOG_FILE = "/tmp/nvidia-installer.log"
