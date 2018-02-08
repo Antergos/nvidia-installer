@@ -320,7 +320,6 @@ def check_device():
 
     for line in lines:
         if line:
-            print(line)
             class_id, vendor_id, product_id = get_class_vendor_product(line)
 
             if class_id == CLASS_ID and vendor_id == VENDOR_ID:
