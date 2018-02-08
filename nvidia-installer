@@ -263,7 +263,7 @@ PACKAGES_LTS = {
     "nvidia": ["nvidia-lts"],
     "nvidia340xx": ["nvidia-340xx-lts"],
     "nvidia304xx": ["nvidia-304xx-lts"],
-    "bumblebee": ["nvidia-lts", "bbswitch-lts"]}
+    "bumblebee": ["nvidia-lts", "bbswitch-dkms"]}
 
 PACKAGES_X86_64 = {
     "nouveau": ["lib32-mesa"],
