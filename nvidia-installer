@@ -101,11 +101,11 @@ CONFLICTS_X86_64 = {
     "nvidia": ["lib32-nvidia-libgl", "lib32-nvidia-340xx-utils",
                "lib32-nvidia-304xx-utils"],
     "nvidia-390xx": ["lib32-nvidia-libgl", "lib32-nvidia-utils",
-                    "lib32-nvidia-390xx-utils"],
+                     "lib32-nvidia-390xx-utils"],
     "nvidia-340xx": ["lib32-nvidia-libgl", "lib32-nvidia-utils",
-                    "lib32-nvidia-340xx-utils"],
+                     "lib32-nvidia-340xx-utils"],
     "nvidia-304xx": ["lib32-nvidia-libgl", "lib32-nvidia-utils",
-                    "lib32-nvidia-304xx-utils"],
+                     "lib32-nvidia-304xx-utils"],
     "bumblebee": ["lib32-nvidia-libgl", "lib32-nvidia-390xx-utils",
                   "lib32-nvidia-340xx-utils", "lib32-nvidia-304xx-utils"]}
 
@@ -133,9 +133,9 @@ def check_device():
     for line in lines:
         if line:
             class_id, vendor_id, product_id = get_class_vendor_product(line)
-            
+
             if class_id == CLASS_ID and vendor_id == VENDOR_ID:
-                for driver in DEVICES:             
+                for driver in DEVICES:
                     if product_id in DEVICES[driver]:
                         return driver
     return None
@@ -464,7 +464,7 @@ def load_ids_file(path):
     """ Loads pci device numbers from a ids file """
     with open(path, 'r') as ids_file:
         lines = ids_file.readlines()
-    
+
     ids = []
     for line in lines:
         ids.extend(line.split())
@@ -482,7 +482,7 @@ def load_ids():
             key = item[:-4]
             path = os.path.join(IDS_PATH, item)
             DEVICES[key] = load_ids_file(path)
-    
+
 
 def main():
     """ Main program """
