@@ -50,8 +50,7 @@ BOLD = '\033[1m'
 DEVICES = {
     "nvidia" : [],
     "nvidia-390xx" : [],
-    "nvidia-340xx" : [],
-    "nvidia-304xx" : []
+    "nvidia-340xx" : []
 }
 
 CLASS_ID = "0x03"
@@ -62,7 +61,6 @@ PACKAGES = {
     "nvidia": ["nvidia", "libvdpau"],
     "nvidia-390xx": ["nvidia-390xx", "libvdpau"],
     "nvidia-340xx": ["nvidia-340xx", "libvdpau"],
-    "nvidia-304xx": ["nvidia-304xx", "libvdpau"],
     "bumblebee": ["bumblebee", "mesa", "xf86-video-intel",
                   "nvidia", "virtualgl", "nvidia-settings", "bbswitch"]}
 
@@ -71,7 +69,6 @@ PACKAGES_LTS = {
     "nvidia": ["nvidia-lts"],
     "nvidia-390xx": ["nvidia-390xx-lts"],
     "nvidia-340xx": ["nvidia-340xx-lts"],
-    "nvidia-304xx": ["nvidia-304xx-lts"],
     "bumblebee": ["nvidia-lts", "bbswitch-dkms"]}
 
 PACKAGES_X86_64 = {
@@ -79,7 +76,6 @@ PACKAGES_X86_64 = {
     "nvidia": ["lib32-nvidia-utils", "lib32-libvdpau"],
     "nvidia-390xx": ["lib32-nvidia-390xx-utils", "lib32-libvdpau"],
     "nvidia-340xx": ["lib32-nvidia-340xx-utils", "lib32-libvdpau"],
-    "nvidia-304xx": ["lib32-nvidia-304xx-utils", "lib32-libvdpau"],
     "bumblebee": ["lib32-nvidia-utils", "lib32-virtualgl", "lib32-mesa"]}
 
 CONFLICTS = {
@@ -91,7 +87,6 @@ CONFLICTS = {
     "nvidia": ["xf86-video-nouveau"],
     "nvidia-390xx": ["xf86-video-nouveau"],
     "nvidia-340xx": ["xf86-video-nouveau"],
-    "nvidia-304xx": ["xf86-video-nouveau"],
     "bumblebee": ["xf86-video-nouveau", "nvidia-libgl",
                   "nvidia-390xx-utils", "nvidia-340xx-utils", "nvidia-304xx-utils"]}
 
@@ -104,8 +99,6 @@ CONFLICTS_X86_64 = {
                      "lib32-nvidia-390xx-utils"],
     "nvidia-340xx": ["lib32-nvidia-libgl", "lib32-nvidia-utils",
                      "lib32-nvidia-340xx-utils"],
-    "nvidia-304xx": ["lib32-nvidia-libgl", "lib32-nvidia-utils",
-                     "lib32-nvidia-304xx-utils"],
     "bumblebee": ["lib32-nvidia-libgl", "lib32-nvidia-390xx-utils",
                   "lib32-nvidia-340xx-utils", "lib32-nvidia-304xx-utils"]}
 
@@ -113,17 +106,17 @@ CONFLICTS_X86_64 = {
 def get_class_vendor_product(line):
     """ Parses lspci -n output line """
     line = line.split()
-    class_id = "0x{0}".format(line[1].rstrip(":")[0:2])
+    class_id = "0x{}".format(line[1].rstrip(":")[0:2])
     dev = line[2].split(":")
-    vendor_id = "0x{0}".format(dev[0])
-    product_id = "0x{0}".format(dev[1])
+    vendor_id = "0x{}".format(dev[0])
+    product_id = "0x{}".format(dev[1])
     return (class_id, vendor_id, product_id)
 
 
 def check_device():
     """ Tries to guess if a device suitable for this driver is present """
     try:
-        cmd = ["lspci", "-n"]
+        cmd = ["/usr/bin/lspci", "-n"]
         lines = subprocess.check_output(cmd, stderr=subprocess.STDOUT)
         lines = lines.decode().split("\n")
     except subprocess.CalledProcessError as err:
@@ -254,15 +247,16 @@ def patch_nvidia_settings(patch=True):
     """ Fixes nvidia-settings.desktop """
     desktop_path = "/usr/share/applications/nvidia-settings.desktop"
     if os.path.exists(desktop_path):
+        exec1 = "Exec=/usr/bin/nvidia-settings"
+        exec2 = "Exec=optirun -b none /usr/bin/nvidia-settings -c :8"
         if patch:
             log_info("Patching {}...".format(desktop_path))
-            sed = 's|Exec=/usr/bin/nvidia-settings|Exec=optirun -b none /usr/bin/nvidia-settings -c :8|'
-            cmd = ["sed", "-i", sed, desktop_path]
+            sed = "s|{0}|{1}|"
         else:
             log_info("Unpatching {}...".format(desktop_path))
-            sed = 's|Exec=optirun -b none /usr/bin/nvidia-settings -c :8|Exec=/usr/bin/nvidia-settings|'
-            cmd = ["sed", "-i", sed, desktop_path]
-
+            sed = "s|{1}|{0}|"
+        sed = sed.format(exec1, exec2)
+        cmd = ["/usr/bin/sed", "-i", sed, desktop_path]
         if TEST:
             log_info(" ".join(cmd))
         else:
@@ -447,17 +441,20 @@ def setup_logging(cmd_line):
 
 def log_error(msg):
     """ Log error message """
-    logging.error(RED + msg + ENDC)
+    msg = RED + msg + ENDC
+    logging.error(msg)
 
 
 def log_warning(msg):
     """ Log warning message """
-    logging.warning(YELLOW + msg + ENDC)
+    msg = YELLOW + msg + ENDC
+    logging.warning(msg)
 
 
 def log_info(msg):
     """ Log information message """
-    logging.info(GREEN + msg + ENDC)
+    msg = GREEN + msg + ENDC
+    logging.info(msg)
 
 
 def load_ids_file(path):
