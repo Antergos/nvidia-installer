@@ -168,7 +168,8 @@ NVS 810, NVS 510, NVS 315, NVS 310
 NVS 5400M, NVS 5200M, NVS 4200M
 
 ## 340.107 (nvidia-340xx)
-NVIDIA TITAN Series:
+
+### NVIDIA TITAN Series:
 
 GeForce GTX TITAN, GeForce GTX TITAN Black, GeForce GTX TITAN Z
 ### GeForce 800M Series (Notebooks):
