@@ -33,8 +33,9 @@ import getpass
 import os
 import logging
 import subprocess
+import sys
 
-VERSION = "1.17"
+VERSION = "1.18"
 TEST = True
 
 LOG_FILE = "/tmp/nvidia-installer.log"
@@ -123,6 +124,7 @@ def check_device():
         log_warning("Cannot detect hardware components : {}".format(err.output.decode()))
         return None
 
+    drivers = []
     for line in lines:
         if line:
             class_id, vendor_id, product_id = get_class_vendor_product(line)
@@ -130,8 +132,28 @@ def check_device():
             if class_id == CLASS_ID and vendor_id == VENDOR_ID:
                 for driver in DEVICES:
                     if product_id in DEVICES[driver]:
-                        return driver
-    return None
+                        drivers.append(driver)
+    return drivers
+
+
+def choose_driver(drivers):
+    """ There is more than one suitable driver. Let user choose """
+
+    print("There is more than one suitable driver. Please choose:")
+    index = 0
+    for index, driver in enumerate(drivers):
+        print("{0}. {1}".format(index + 1, driver))
+    print("{0}. Quit".format(index + 2))
+
+    choose = -1
+    while choose == -1:
+        choose = input("Your selection: ")
+        choose = int(choose) - 1
+
+    if choose >= len(drivers):
+        sys.exit(0)
+
+    return drivers[choose]
 
 
 def install(driver):
@@ -497,7 +519,8 @@ def main():
     if not TEST and os.getuid() != 0:
         log_error("This installer must be run with administrative privileges (use sudo)")
         return
-    elif TEST and os.getuid() == 0:
+
+    if TEST and os.getuid() == 0:
         log_error("Do not run this installer in test mode with administrative privileges")
         return
 
@@ -510,16 +533,25 @@ def main():
         log_error("Cannot load ids files from /var/lib/pci")
         return
 
+    driver = None
+
     if cmd_line.bumblebee:
         driver = "bumblebee"
     elif cmd_line.nouveau:
         driver = "nouveau"
     else:
-        driver = check_device()
+        drivers = check_device()
+        if drivers:
+            if len(drivers) > 1:
+                # We have more than one suitable driver
+                driver = choose_driver(drivers)
+            else:
+                driver = drivers[0]
 
     if not driver and cmd_line.force:
-        msg = "Your graphics card is not in our database. " \
-            "Forcing nvidia driver installation anyways..."
+        msg = (
+            "Your graphics card is not in our database. "
+            "Forcing nvidia driver installation anyways...")
         log_warning(msg)
         driver = "nvidia"
 
